@@ -35,6 +35,17 @@ Final video: `output/sumit_lottery_combo_offer.mp4` (1080x1920 vertical, 84.5s; 
   1st prize guaranteed from sold tickets in all three; ₹1200 → combo ₹1199 with free delivery; agency contact
 - Ticket images are cropped from the combo poster (`assets/combo/poster.png`); all five agency numbers run in the ticker
 
+## 4. Diwali Bumper 2026 – presented by a Punjabi girl ("Punjaban")
+
+Final video: `output/diwali_bumper_punjaban.mp4` (1080x1920 vertical, 62.8s)
+
+- Different style: an animated Punjabi girl (phulkari dupatta, paranda braid, jhumkas) holds the real ticket
+  in both hands and talks about it; zoom lenses pop out of the ticket (title, Govt logo, sold-tickets line,
+  draw date, MRP); Instagram-story stickers; phulkari border; full-screen B-roll cutaways (₹12 crore
+  jackpot, prize ladder, rashi wheel) with her in a corner circle
+- Female Punjabi-accented voice (ElevenLabs "Jasleen"), Hindi with Punjabi touches; agency ticker at the bottom
+- Character: `video/presenter_girl.py`; scenes: `video/punjaban_scenes.py`
+
 ## Rebuild
 ```
 python3 video/build_audio.py   # soundtrack + lip-sync data -> build/
@@ -48,6 +59,10 @@ python3 video/render.py --project diwali
 # Combo offer video
 python3 video/build_audio.py --project combo
 python3 video/render.py --project combo
+
+# Punjabi girl presenter video
+python3 video/build_audio.py --project punjaban
+python3 video/render.py --project punjaban
 ```
 The Diwali video's timings live in `video/diwali_timeline.py`, its scenes in `video/diwali_scenes.py`.
 Timings, captions and the SFX cue sheet live in `video/timeline.py`.

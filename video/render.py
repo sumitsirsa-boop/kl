@@ -31,6 +31,7 @@ DURATION, FPS, H, LINES, SCENES, W, scene_at = T.DURATION, T.FPS, T.H, T.LINES, 
 # Per-project look and layout (the Dear 1000 video uses the defaults)
 BG_COLORS = getattr(T, "BG_COLORS", ((18, 30, 120), (40, 70, 200), (70, 20, 140)))
 RAY_COLOR = getattr(T, "RAY_COLOR", (255, 220, 90))
+RAY_INTENSITY = getattr(T, "RAY_INTENSITY", 1.0)
 HEADER_SPAN = getattr(T, "HEADER_SPAN", (5.55, 65.4))
 SHAKES = getattr(T, "SHAKES", ((27.2, 18), (10.3, 10), (28.95, 12)))
 BOOST_SCENES = getattr(T, "BOOST_SCENES", ("jackpot",))
@@ -53,7 +54,7 @@ _BASE *= (1 - 0.35 * np.clip(_RAD / 1400, 0, 1) ** 2)[..., None]  # vignette
 
 def background(t, intensity=1.0):
     rays = np.clip(np.sin(_ANG * 14 + t * 0.35) * 4, 0, 1) * _FALL
-    amt = (0.10 * intensity)
+    amt = 0.10 * intensity * RAY_INTENSITY
     img = _BASE + rays[..., None] * amt * np.array(RAY_COLOR, np.float32)
     return Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
 
@@ -258,7 +259,10 @@ def render_frame(frame, env):
         dx, dy = int(math.sin(t * 90) * shake), int(math.cos(t * 77) * shake)
         c.alpha_composite(layer, (max(0, dx), max(0, dy)), (max(0, -dx), max(0, -dy)))
     draw_header(c, t)
-    draw_presenter(c, t, frame, env)
+    if hasattr(SC, "draw_host"):  # project draws its own presenter
+        SC.draw_host(c, t, frame, env)
+    else:
+        draw_presenter(c, t, frame, env)
     if hasattr(SC, "overlay"):
         SC.overlay(c, t)
     draw_captions(c, t)
