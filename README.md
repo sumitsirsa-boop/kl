@@ -24,6 +24,7 @@ Final video: `output/punjab_dear_diwali_bumper_2026.mp4` (1080x1920 vertical, 97
 - Diwali look: maroon/gold, fireworks, diyas, rotating rangoli, marigold toran, Happy Diwali intro/outro
 - Agency name, address and numbers run all the time in a bottom ticker, plus pop-up contact cards between scenes
 - Extra synthesized SFX: rocket fireworks, crackers, temple bell
+- Covers: `output/cover_diwali_reel_1080x1920.jpg` (Reels/FB) and `output/cover_diwali_feed_1080x1350.jpg` (feed) – `python3 video/cover.py`
 
 ## Rebuild
 ```

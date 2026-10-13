@@ -135,8 +135,8 @@ def flame_sprite(h):
 
 def diya(c, t, x, y, scale=1.0, seed=0):
     flick = 1 + 0.12 * math.sin(t * 17 + seed) + 0.06 * math.sin(t * 29 + seed * 2)
-    paste(c, glow_sprite(90, (255, 170, 60), 0.55), x, y - 40 * scale, scale * flick)
-    paste(c, flame_sprite(56), x, y - 30 * scale, scale, sy=flick, rot=math.sin(t * 6 + seed) * 6)
+    paste(c, glow_sprite(90, (255, 170, 60), 0.55), x, y - 55 * scale, scale * flick)
+    paste(c, flame_sprite(56), x, y - 48 * scale, scale, sy=flick, rot=math.sin(t * 6 + seed) * 6)
     paste(c, diya_base(), x, y + 10 * scale, scale)
 
 
