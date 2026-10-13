@@ -3,7 +3,7 @@
 All sound effects and the music bed are synthesized here with numpy, so the
 project has no third-party audio licensing to worry about.
 
-Usage: python3 video/build_audio.py
+Usage: python3 video/build_audio.py [--project diwali]
 Writes build/sfx_music.wav (no voice), build/mix.wav (final) and build/voice_env.npy
 (per-frame voice loudness, used for the presenter's lip-sync).
 """
@@ -13,11 +13,14 @@ import wave
 
 import numpy as np
 
-from timeline import CONTACT_AT, CONTACT_LEAD, DURATION, FPS, SFX, SHIFT
+from project import load
+
+T = load("timeline")
+DURATION, FPS, SFX = T.DURATION, T.FPS, T.SFX
 
 SR = 44100
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BUILD = os.path.join(ROOT, "build")
+BUILD = os.path.join(ROOT, "build", T.BUILD_NAME)
 rng = np.random.default_rng(7)
 
 
@@ -278,6 +281,45 @@ def sfx_rattle():
     return norm(out, 0.5)
 
 
+def sfx_rocket():
+    """Diwali rocket: rising whistle then a crackling burst."""
+    d = 2.2
+    t = t_axis(d)
+    out = np.zeros(len(t))
+    rise = int(0.9 * SR)
+    tt = t[:rise]
+    f = 900 + 2200 * (tt / 0.9) ** 1.5
+    out[:rise] = np.sin(2 * np.pi * np.cumsum(f) / SR) * 0.35 * np.minimum(1, tt / 0.1)
+    b = len(t) - rise
+    tb = np.arange(b) / SR
+    boom = np.sin(2 * np.pi * (60 * np.exp(-tb * 5) + 40) * tb) * np.exp(-tb * 5)
+    crackle = np.zeros(b)
+    for k in range(70):
+        s = int(rng.uniform(0.05, 1.1) * SR)
+        m = int(0.008 * SR)
+        crackle[s:s + m] += noise(0.008)[:m] * rng.uniform(0.2, 1) * np.exp(-s / SR * 1.5)
+    out[rise:] = boom + hp_fft(crackle, 2000) * 1.5
+    return norm(np.tanh(out * 1.5), 0.9)
+
+
+def sfx_cracker():
+    d = 0.7
+    t = t_axis(d)
+    bang = noise(d) * np.exp(-t * 18)
+    body = np.sin(2 * np.pi * (80 * np.exp(-t * 10) + 45) * t) * np.exp(-t * 9)
+    return norm(np.tanh(2.5 * (lp_fft(bang, 4000) + body)), 0.95)
+
+
+def sfx_bell():
+    """Temple bell (ghanti)."""
+    d = 2.5
+    t = t_axis(d)
+    partials = [(1, 1.0), (2.32, 0.6), (4.25, 0.35), (6.63, 0.2)]
+    x = sum(a * np.sin(2 * np.pi * 820 * m * t) * np.exp(-t * (1.2 + m * 0.5)) for m, a in partials)
+    x *= 1 + 0.15 * np.sin(2 * np.pi * 5 * t)
+    return norm(x * np.minimum(1, t / 0.002), 0.7)
+
+
 EFFECTS = {name[4:]: fn for name, fn in globals().items() if name.startswith("sfx_")}
 
 
@@ -343,22 +385,26 @@ def music_bed(dur):
     return out * np.clip(fade, 0, 1)
 
 
-def decode(name):
-    path = os.path.join(BUILD, name + ".wav")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(ROOT, "assets", name + ".mp3"),
+def decode(rel):
+    path = os.path.join(BUILD, os.path.basename(rel) + ".wav")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(ROOT, "assets", rel),
                     "-ac", "1", "-ar", str(SR), path], check=True)
     with wave.open(path) as w:
         return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
 
 
 def read_voice():
-    """Main voiceover with the agency contact line spliced in at CONTACT_AT."""
-    main, contact = decode("voiceover"), decode("voiceover_contact")
-    cut = int(CONTACT_AT * SR)
-    gap = np.zeros(int(SHIFT * SR))
-    lead = int(CONTACT_LEAD * SR)
-    gap[lead:lead + len(contact)] = contact[: len(gap) - lead]
-    return np.concatenate([main[:cut], gap, main[cut:]])
+    """Lays out the voice clips listed in the timeline's VOICE_CLIPS."""
+    out = np.zeros(int(DURATION * SR))
+    cache = {}
+    for at, rel, src_s, src_e in T.VOICE_CLIPS:
+        if rel not in cache:
+            cache[rel] = decode(rel)
+        x = cache[rel][int(src_s * SR):None if src_e is None else int(src_e * SR)]
+        s = int(at * SR)
+        e = min(len(out), s + len(x))
+        out[s:e] += x[: e - s]
+    return out
 
 
 def write_wav(path, x):
@@ -374,9 +420,7 @@ def write_wav(path, x):
 def main():
     os.makedirs(BUILD, exist_ok=True)
     n = int(DURATION * SR)
-    voice = np.zeros(n)
-    v = read_voice()
-    voice[: min(n, len(v))] = v[:n]
+    voice = read_voice()
 
     cache = {}
     sfx = np.zeros(n)

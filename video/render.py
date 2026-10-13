@@ -4,6 +4,7 @@ Usage:
   python3 video/build_audio.py           # once, makes build/mix.wav + build/voice_env.npy
   python3 video/render.py                # full render -> output/punjab_dear_1000_ticket.mp4
   python3 video/render.py --still 28.5   # single frame preview PNG at t=28.5s
+  Add `--project diwali` (to both scripts) to build the Diwali Bumper video instead.
 """
 import argparse
 import math
@@ -21,10 +22,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gfx import (GOLD, NAVY, RED, ROOT, WHITE, clamp, ease_in_out, ease_out_back, ease_out_cubic, font, glow_sprite,
                  gradient_box, lerp, paste, prog, rounded_box, text_img, wrap_words)
 from presenter import PH, PW, presenter_img, presenter_shadow, presenter_state
-from scenes import SCENE_FUNCS
-from timeline import DURATION, FPS, H, LINES, SCENES, W, scene_at
+from project import load
 
-BUILD = os.path.join(ROOT, "build")
+T, SC = load("timeline"), load("scenes")
+SCENE_FUNCS = SC.SCENE_FUNCS
+DURATION, FPS, H, LINES, SCENES, W, scene_at = T.DURATION, T.FPS, T.H, T.LINES, T.SCENES, T.W, T.scene_at
+
+# Per-project look and layout (the Dear 1000 video uses the defaults)
+BG_COLORS = getattr(T, "BG_COLORS", ((18, 30, 120), (40, 70, 200), (70, 20, 140)))
+RAY_COLOR = getattr(T, "RAY_COLOR", (255, 220, 90))
+HEADER_SPAN = getattr(T, "HEADER_SPAN", (5.55, 65.4))
+SHAKES = getattr(T, "SHAKES", ((27.2, 18), (10.3, 10), (28.95, 12)))
+BOOST_SCENES = getattr(T, "BOOST_SCENES", ("jackpot",))
+CAPTION_BOTTOM = getattr(T, "CAPTION_BOTTOM", 1880)
+
+BUILD = os.path.join(ROOT, "build", getattr(T, "BUILD_NAME", ""))
 OUT = os.path.join(ROOT, "output")
 
 # ------------------------------------------------------------------ background
@@ -33,7 +45,7 @@ _ANG = np.arctan2(_yy - 760, _xx - W / 2)
 _RAD = np.sqrt((_xx - W / 2) ** 2 + (_yy - 760) ** 2)
 _FALL = np.clip(1 - _RAD / 1500, 0, 1)
 _BASE = np.zeros((H, W, 3), np.float32)
-_top, _mid, _bot = np.array([18, 30, 120]), np.array([40, 70, 200]), np.array([70, 20, 140])
+_top, _mid, _bot = (np.array(c, np.float32) for c in BG_COLORS)
 _k = (_yy / H)[..., None]
 _BASE[:] = np.where(_k < 0.5, _top + (_mid - _top) * (_k / 0.5), _mid + (_bot - _mid) * ((_k - 0.5) / 0.5))
 _BASE *= (1 - 0.35 * np.clip(_RAD / 1400, 0, 1) ** 2)[..., None]  # vignette
@@ -42,7 +54,7 @@ _BASE *= (1 - 0.35 * np.clip(_RAD / 1400, 0, 1) ** 2)[..., None]  # vignette
 def background(t, intensity=1.0):
     rays = np.clip(np.sin(_ANG * 14 + t * 0.35) * 4, 0, 1) * _FALL
     amt = (0.10 * intensity)
-    img = _BASE + rays[..., None] * amt * np.array([255, 220, 90], np.float32)
+    img = _BASE + rays[..., None] * amt * np.array(RAY_COLOR, np.float32)
     return Image.fromarray(np.clip(img, 0, 255).astype(np.uint8), "RGB").convert("RGBA")
 
 
@@ -59,7 +71,7 @@ def bokeh(canvas, t):
 
 # ------------------------------------------------------------------ header
 @lru_cache(maxsize=None)
-def header_img():
+def default_header_img():
     w, h = 1000, 120
     img = gradient_box(w, h, 26, (235, 40, 50), (150, 10, 30), outline=GOLD + (255,), width=4, shadow=10, horizontal=True)
     off = 20
@@ -76,14 +88,17 @@ def header_img():
 
 
 def draw_header(c, t):
-    if t < 5.55 or t > 65.4:
+    a, b = HEADER_SPAN
+    if t < a or t > b:
         return
-    p = ease_out_cubic(prog(t, 5.55, 0.5)) * (1 - prog(t, 65.0, 0.4))
-    paste(c, header_img(), W / 2, lerp(-120, 100, p))
+    p = ease_out_cubic(prog(t, a, 0.5)) * (1 - prog(t, b - 0.4, 0.4))
+    img = SC.header_img() if hasattr(SC, "header_img") else default_header_img()
+    paste(c, img, W / 2, lerp(-120, 100, p))
 
 
 # ------------------------------------------------------------------ presenter
-BIG_MODE = [(0.0, 5.55), (65.5, DURATION)]  # big host for responsible-play, contact and outro
+# big host for intro and the closing scenes, picture-in-picture otherwise
+BIG_MODE = getattr(T, "BIG_MODE", [(0.0, 5.55), (65.5, DURATION)])
 
 
 def presenter_mode(t):
@@ -91,8 +106,9 @@ def presenter_mode(t):
     for a, b in BIG_MODE:
         if a <= t < b:
             return 1 - ease_in_out(clamp((t - a) / 0.5)) if a > 0 else 0.0
-    # in PIP span: transition from big ending at 5.55
-    return ease_in_out(clamp((t - 5.55) / 0.5))
+    # in PIP span: shrink in over 0.5s after the most recent big span ended
+    last_end = max((b for a, b in BIG_MODE if b <= t), default=0.0)
+    return ease_in_out(clamp((t - last_end) / 0.5))
 
 
 @lru_cache(maxsize=None)
@@ -206,7 +222,7 @@ def draw_captions(c, t):
             img = caption_img(i, hi)
             p = ease_out_cubic(prog(t, s - 0.05, 0.2))
             out = prog(t, e + 0.15, 0.2)
-            paste(c, img, W / 2, 1880 - img.height / 2 + (1 - p) * 30, alpha=p * (1 - out))
+            paste(c, img, W / 2, CAPTION_BOTTOM - img.height / 2 + (1 - p) * 30, alpha=p * (1 - out))
             return
 
 
@@ -228,12 +244,12 @@ def draw_transition(c, t):
 def render_frame(frame, env):
     t = frame / FPS
     name, s, e = scene_at(t)
-    intensity = 2.5 if name == "jackpot" else 1.0
+    intensity = 2.5 if name in BOOST_SCENES else 1.0
     c = background(t, intensity)
     bokeh(c, t)
     # screen shake on impacts
     shake = 0.0
-    for ts, amp in ((27.2, 18), (10.3, 10), (28.95, 12)):
+    for ts, amp in SHAKES:
         if 0 <= t - ts < 0.4:
             shake = max(shake, amp * (1 - (t - ts) / 0.4))
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0)) if shake else c
@@ -243,6 +259,8 @@ def render_frame(frame, env):
         c.alpha_composite(layer, (max(0, dx), max(0, dy)), (max(0, -dx), max(0, -dy)))
     draw_header(c, t)
     draw_presenter(c, t, frame, env)
+    if hasattr(SC, "overlay"):
+        SC.overlay(c, t)
     draw_captions(c, t)
     draw_transition(c, t)
     # fade in/out
@@ -272,6 +290,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--still", type=float, nargs="*")
     ap.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
+    ap.add_argument("--project", default="")
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
     env = np.load(os.path.join(BUILD, "voice_env.npy"))
@@ -289,7 +308,7 @@ def main():
     lst = os.path.join(BUILD, "parts.txt")
     with open(lst, "w") as f:
         f.writelines(f"file '{p}'\n" for p in parts)
-    final = os.path.join(OUT, "punjab_dear_1000_ticket.mp4")
+    final = os.path.join(OUT, getattr(T, "OUTPUT_FILE", "punjab_dear_1000_ticket.mp4"))
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lst,
                     "-i", os.path.join(BUILD, "mix.wav"), "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
                     "-shortest", "-movflags", "+faststart", final], check=True)

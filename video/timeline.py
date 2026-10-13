@@ -16,6 +16,17 @@ CONTACT_START = CONTACT_AT + CONTACT_LEAD
 DURATION = 75.0 + SHIFT  # main voiceover is 73.36s, plus a short tail for the end card
 
 
+OUTPUT_FILE = "punjab_dear_1000_ticket.mp4"
+BUILD_NAME = ""
+
+# (place at, mp3 in assets/, source start, source end or None): main take with the contact line spliced in
+VOICE_CLIPS = [
+    (0.0, "voiceover.mp3", 0.0, CONTACT_AT),
+    (CONTACT_START, "voiceover_contact.mp3", 0.0, None),
+    (CONTACT_AT + SHIFT, "voiceover.mp3", CONTACT_AT, None),
+]
+
+
 def sh(t):
     return t + SHIFT if t >= CONTACT_AT else t
 
