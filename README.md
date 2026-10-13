@@ -26,6 +26,15 @@ Final video: `output/punjab_dear_diwali_bumper_2026.mp4` (1080x1920 vertical, 97
 - Extra synthesized SFX: rocket fireworks, crackers, temple bell
 - Covers: `output/cover_diwali_reel_1080x1920.jpg` (Reels/FB) and `output/cover_diwali_feed_1080x1350.jpg` (feed) – `python3 video/cover.py`
 
+## 3. Sumit Lottery Agency – 3-ticket COMBO offer
+
+Final video: `output/sumit_lottery_combo_offer.mp4` (1080x1920 vertical, 84.5s; `_share.mp4` is a smaller copy)
+
+- Hindi voiceover (`assets/combo/voiceover.mp3`): Nagaland Dear Puja Bumper (₹3 Cr, 24-10-2026, ₹500),
+  Punjab Dear 200 Monthly (₹1.50 Cr, 07-11-2026, ₹200), Punjab Dear Diwali Bumper (₹12 Cr, 16-11-2026, ₹500);
+  1st prize guaranteed from sold tickets in all three; ₹1200 → combo ₹1199 with free delivery; agency contact
+- Ticket images are cropped from the combo poster (`assets/combo/poster.png`); all five agency numbers run in the ticker
+
 ## Rebuild
 ```
 python3 video/build_audio.py   # soundtrack + lip-sync data -> build/
@@ -35,6 +44,10 @@ python3 video/render.py --still 28.5   # preview a single frame
 # Diwali Bumper video
 python3 video/build_audio.py --project diwali
 python3 video/render.py --project diwali
+
+# Combo offer video
+python3 video/build_audio.py --project combo
+python3 video/render.py --project combo
 ```
 The Diwali video's timings live in `video/diwali_timeline.py`, its scenes in `video/diwali_scenes.py`.
 Timings, captions and the SFX cue sheet live in `video/timeline.py`.

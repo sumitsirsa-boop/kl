@@ -9,12 +9,11 @@ import os
 import random
 from functools import lru_cache
 
-import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 import scenes as base
 from diwali_timeline import CONTACT_POPUPS, CONTACT_START, RASHI_TIMES
-from gfx import (DEEP_RED, GOLD, GOLD_LIGHT, GREEN, NAVY, ORANGE, PINK, RED, ROOT, WHITE, clamp, ease_in_out,
+from gfx import (DEEP_RED, GOLD, GOLD_LIGHT, GREEN, NAVY, RED, ROOT, WHITE, clamp, ease_in_out,
                  ease_out_back, ease_out_cubic, ease_out_elastic, font, glow_sprite, grad_text, gradient_box,
                  indian_format, lerp, paste, prog, rounded_box, supersampled, text_img)
 from timeline import H, W
@@ -212,22 +211,24 @@ def header_img():
     return img
 
 
+TICKER_TEXT = f"  ★ {AGENCY}  •  {ADDRESS}  •  ☎ {PHONES[0]}  •  ☎ {PHONES[1]}  "
+
+
 @lru_cache(maxsize=None)
-def ticker_strip():
-    item = f"  ★ {AGENCY}  •  {ADDRESS}  •  ☎ {PHONES[0]}  •  ☎ {PHONES[1]}  "
-    t = text_img(item, "sym", 30, fill=WHITE)
-    return t
+def ticker_strip(text=TICKER_TEXT):
+    return text_img(text, "sym", 30, fill=WHITE)
 
 
-def draw_ticker(c, t):
-    if t < 1.0 or t > 96.8:
+def draw_ticker(c, t, text=TICKER_TEXT, start=1.0, end=96.8):
+    """Scrolling agency name/address/numbers bar along the bottom edge."""
+    if t < start or t > end:
         return
-    a = clamp((t - 1.0) / 0.4) * clamp((96.8 - t) / 0.4)
+    a = clamp((t - start) / 0.4) * clamp((end - t) / 0.4)
     bar_h, y0 = 56, H - 56
     bar = gradient_box(W, bar_h, 0, (150, 10, 40), (90, 5, 30), horizontal=True)
     d = ImageDraw.Draw(bar)
     d.line((0, 0, W, 0), fill=GOLD, width=4)
-    strip = ticker_strip()
+    strip = ticker_strip(text)
     sw = strip.width
     off = -(t * 140) % sw
     x = off - sw
