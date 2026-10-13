@@ -13,7 +13,7 @@ import wave
 
 import numpy as np
 
-from timeline import DURATION, FPS, SFX
+from timeline import CONTACT_AT, CONTACT_LEAD, DURATION, FPS, SFX, SHIFT
 
 SR = 44100
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -343,13 +343,22 @@ def music_bed(dur):
     return out * np.clip(fade, 0, 1)
 
 
-def read_voice():
-    path = os.path.join(BUILD, "voice.wav")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(ROOT, "assets", "voiceover.mp3"),
+def decode(name):
+    path = os.path.join(BUILD, name + ".wav")
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", os.path.join(ROOT, "assets", name + ".mp3"),
                     "-ac", "1", "-ar", str(SR), path], check=True)
     with wave.open(path) as w:
-        data = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
-    return data
+        return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
+
+
+def read_voice():
+    """Main voiceover with the agency contact line spliced in at CONTACT_AT."""
+    main, contact = decode("voiceover"), decode("voiceover_contact")
+    cut = int(CONTACT_AT * SR)
+    gap = np.zeros(int(SHIFT * SR))
+    lead = int(CONTACT_LEAD * SR)
+    gap[lead:lead + len(contact)] = contact[: len(gap) - lead]
+    return np.concatenate([main[:cut], gap, main[cut:]])
 
 
 def write_wav(path, x):

@@ -83,7 +83,7 @@ def draw_header(c, t):
 
 
 # ------------------------------------------------------------------ presenter
-BIG_MODE = [(0.0, 5.55), (65.5, DURATION)]
+BIG_MODE = [(0.0, 5.55), (65.5, DURATION)]  # big host for responsible-play, contact and outro
 
 
 def presenter_mode(t):

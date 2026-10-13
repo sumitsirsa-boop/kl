@@ -755,33 +755,88 @@ def cursor_sprite():
 def scene_outro(c, t, s, e):
     lt = t - s
     title_in(c, t, s, grad_text("LIKE & SHARE", "anton", 150, stroke=8), CX, 300, "pop")
-    like_pressed = 71.3 <= t < 71.5
-    share_pressed = 72.4 <= t < 72.6
+    like_pressed = s + 1.25 <= t < s + 1.45
+    share_pressed = s + 2.35 <= t < s + 2.55
     title_in(c, t, s + 0.3, action_button("LIKE", (40, 110, 240), like_pressed), 290, 520, "left")
     title_in(c, t, s + 0.5, action_button("SHARE", (30, 170, 80), share_pressed), 790, 520, "right")
     # animated cursor
-    if t > 70.6:
-        if t < 71.3:
-            k = ease_in_out(prog(t, 70.6, 0.7))
+    if t > s + 0.55:
+        if t < s + 1.25:
+            k = ease_in_out(prog(t, s + 0.55, 0.7))
             x, y = lerp(700, 300, k), lerp(900, 540, k)
-        elif t < 72.4:
-            k = ease_in_out(prog(t, 71.6, 0.8))
+        elif t < s + 2.35:
+            k = ease_in_out(prog(t, s + 1.55, 0.8))
             x, y = lerp(300, 800, k), 540
         else:
             x, y = 800, 540
         press = 0.85 if (like_pressed or share_pressed) else 1.0
         paste(c, cursor_sprite(), x + 30, y + 46, press)
-    if t > 71.3:
+    if t > s + 1.25:
         for i in range(6):
-            k = prog(t, 71.3 + i * 0.08, 1.2)
+            k = prog(t, s + 1.25 + i * 0.08, 1.2)
             if 0 < k < 1:
                 paste(c, heart_sprite((255, 70, 110)), 290 + math.sin(i * 2) * 120, 480 - k * 380, 0.6, alpha=1 - k)
-    title_in(c, t, 73.0, pill("DRAW: 09-01-2027 • 7 PM", "anton", 56, fill=RED + (255,), color=WHITE), CX, 720, "up")
+    title_in(c, t, s + 2.95, pill("DRAW: 09-01-2027 • 7 PM", "anton", 56, fill=RED + (255,), color=WHITE), CX, 700, "up")
+    title_in(c, t, s + 0.8, pill("SUMIT LOTTERY AGENCY, MANSA • 70598 77770 • 89688 69862", "anton", 34, fill=(20, 150, 70, 255),
+                                 color=WHITE, padx=30, pady=12), CX, 800, "up")
+
+
+PHONES = ("70598 77770", "89688 69862")
+
+
+@lru_cache(maxsize=None)
+def agency_card():
+    w, h = 980, 300
+    img = gradient_box(w, h, 36, (255, 228, 110), (255, 170, 30), outline=WHITE + (255,), width=6, shadow=14)
+    d = ImageDraw.Draw(img)
+    off = 28
+    d.text((off + w / 2, off + 95), "SUMIT LOTTERY AGENCY", font=font("anton", 92), fill=DEEP_RED, anchor="mm")
+    d.line((off + 120, off + 160, off + w - 120, off + 160), fill=(200, 60, 40), width=3)
+    addr = "One Way Traffic Road, Mansa"
+    f = font("bold", 50)
+    tw = f.getlength(addr)
+    x0 = off + (w - tw) / 2 + 26
+    y0 = off + 228
+    # map pin
+    d.ellipse((x0 - 74, y0 - 40, x0 - 34, y0), fill=RED)
+    d.polygon([(x0 - 71, y0 - 12), (x0 - 37, y0 - 12), (x0 - 54, y0 + 22)], fill=RED)
+    d.ellipse((x0 - 62, y0 - 28, x0 - 46, y0 - 12), fill=WHITE)
+    d.text((x0, y0 - 6), addr, font=f, fill=NAVY, anchor="lm")
+    return img
+
+
+@lru_cache(maxsize=None)
+def phone_pill(number, lit):
+    w, h = 470, 112
+    c1, c2 = ((60, 220, 120), (20, 140, 70)) if lit else ((40, 180, 95), (15, 110, 55))
+    img = gradient_box(w, h, h // 2, c1, c2, outline=WHITE + (255,), width=5, shadow=10)
+    d = ImageDraw.Draw(img)
+    off = 20
+    cx, cy = off + 62, off + h // 2
+    d.ellipse((cx - 38, cy - 38, cx + 38, cy + 38), fill=WHITE)
+    d.text((cx, cy + 2), "\u260e", font=font("sym", 50), fill=(20, 140, 70), anchor="mm")
+    d.text((off + 112, cy), number, font=font("anton", 62), fill=WHITE, anchor="lm")
+    return img
+
+
+def scene_contact(c, t, s, e):
+    from timeline import CONTACT_START
+    title_in(c, t, s + 0.05, ribbon("टिकट खरीदने के लिए पहुँचें", 860, 104, size=56, fname="xbold"), CX, 290, "pop")
+    p = prog(t, CONTACT_START + 0.3, 0.5)
+    if p > 0:
+        paste(c, agency_card(), CX, 530, ease_out_back(p) * (1 + 0.012 * math.sin(t * 3)))
+    for i, (num, st, en) in enumerate(((PHONES[0], CONTACT_START + 4.59, CONTACT_START + 9.1),
+                                         (PHONES[1], CONTACT_START + 9.52, CONTACT_START + 14.2))):
+        q = prog(t, st, 0.45)
+        if q > 0:
+            lit = st <= t < en
+            pulse = 1 + (0.05 * abs(math.sin(t * 6)) if lit else 0)
+            paste(c, phone_pill(num, lit), 280 + i * 520, 775, ease_out_back(q) * pulse)
 
 
 SCENE_FUNCS = {
     "intro": scene_intro, "ticket": scene_ticket, "draw_date": scene_draw_date, "lohri": scene_lohri,
     "mrp": scene_mrp, "drumroll": scene_drumroll, "jackpot": scene_jackpot, "prize2_3": scene_prize2_3,
     "consolation": scene_consolation, "series": scene_series, "live": scene_live, "tips": scene_tips,
-    "responsible": scene_responsible, "outro": scene_outro,
+    "responsible": scene_responsible, "contact": scene_contact, "outro": scene_outro,
 }

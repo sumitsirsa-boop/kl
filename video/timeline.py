@@ -6,10 +6,22 @@ so captions, motion graphics and sound effects all line up with the speech.
 
 FPS = 30
 W, H = 1080, 1920
-DURATION = 75.0  # voiceover is 73.36s, plus a short tail for the end card
+# The agency contact line (assets/voiceover_contact.mp3) is spliced into the main
+# voiceover at CONTACT_AT; everything after that point moves later by SHIFT.
+CONTACT_AT = 69.75
+CONTACT_LEAD = 0.25
+CONTACT_LEN = 14.2
+SHIFT = CONTACT_LEAD + CONTACT_LEN + 0.4
+CONTACT_START = CONTACT_AT + CONTACT_LEAD
+DURATION = 75.0 + SHIFT  # main voiceover is 73.36s, plus a short tail for the end card
+
+
+def sh(t):
+    return t + SHIFT if t >= CONTACT_AT else t
+
 
 # (start, end, hindi caption)
-LINES = [
+_BASE_LINES = [
     (0.00, 0.90, "नमस्कार दोस्तों!"),
     (1.43, 5.12, "आज मैं आपको बताने वाला हूँ एक बहुत ही खास लॉटरी टिकट के बारे में।"),
     (5.75, 9.57, "ये है — पंजाब स्टेट डियर 1000 क्वार्टरली लॉटरी!"),
@@ -32,13 +44,16 @@ LINES = [
     (70.19, 73.36, "ऐसी ही जानकारी के लिए, वीडियो को लाइक और शेयर ज़रूर करें!"),
 ]
 
-
-def line_start(i):
-    return LINES[i][0]
+CONTACT_LINES = [
+    (CONTACT_START + 0.00, CONTACT_START + 4.10, "टिकट खरीदने के लिए पहुँचिए — सुमित लॉटरी एजेंसी, वन वे ट्रैफ़िक रोड, मानसा!"),
+    (CONTACT_START + 4.59, CONTACT_START + 9.01, "संपर्क करें — 70598 77770"),
+    (CONTACT_START + 9.52, CONTACT_START + 14.10, "या फिर — 89688 69862 पर।"),
+]
+LINES = sorted([(sh(a), sh(b), txt) for a, b, txt in _BASE_LINES] + CONTACT_LINES)
 
 
 # Scene boundaries (start times). Each scene runs until the next one starts.
-SCENES = [
+_BASE_SCENES = [
     ("intro", 0.0),
     ("ticket", 5.55),
     ("draw_date", 14.40),
@@ -54,6 +69,7 @@ SCENES = [
     ("responsible", 65.50),
     ("outro", 70.05),
 ]
+SCENES = sorted([(n, sh(t)) for n, t in _BASE_SCENES] + [("contact", CONTACT_AT)], key=lambda x: x[1])
 
 
 def scene_at(t):
@@ -67,7 +83,7 @@ def scene_at(t):
 
 
 # Sound effects cue sheet: (time, effect name, gain)
-SFX = [
+_BASE_SFX = [
     (0.00, "boom", 0.9), (0.05, "whoosh", 0.7), (0.30, "sparkle", 0.5),
     (5.55, "whoosh", 0.8), (6.10, "sparkle", 0.6),
     (10.35, "stamp", 1.0),
@@ -91,4 +107,8 @@ SFX = [
     (65.50, "whoosh", 0.5), (65.90, "chime", 0.6),
     (70.05, "whoosh", 0.7), (71.30, "click", 1.0), (71.40, "pop", 0.7), (72.40, "click", 1.0), (72.50, "pop", 0.7),
     (73.40, "sparkle", 0.7),
+]
+SFX = [(sh(t), n, g) for t, n, g in _BASE_SFX] + [
+    (CONTACT_AT, "whoosh", 0.7), (CONTACT_START + 0.3, "pop", 0.8), (CONTACT_START + 0.8, "sparkle", 0.6),
+    (CONTACT_START + 2.4, "ding", 0.6), (CONTACT_START + 4.6, "notify", 0.8), (CONTACT_START + 9.6, "notify", 0.8),
 ]

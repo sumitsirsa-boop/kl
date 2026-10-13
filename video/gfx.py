@@ -14,6 +14,7 @@ FONTS = {
     "bold": "Poppins-Bold.ttf",
     "semi": "Poppins-SemiBold.ttf",
     "hind": "Hind-Bold.ttf",
+    "sym": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
 }
 
 GOLD = (255, 205, 40)
