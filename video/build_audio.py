@@ -320,10 +320,154 @@ def sfx_bell():
     return norm(x * np.minimum(1, t / 0.002), 0.7)
 
 
+def sfx_riser():
+    """Rising noise sweep that builds tension before a reveal."""
+    d = 1.6
+    t = t_axis(d)
+    out = np.zeros(len(t))
+    chunks = 16
+    L = len(t) // chunks
+    n = noise(d)
+    for c in range(chunks):
+        seg = n[c * L:(c + 1) * L + 256]
+        centre = 300 + 5000 * (c / chunks) ** 2
+        f = bp_fft(seg, centre * 0.6, centre * 1.5) * np.hanning(len(seg))
+        out[c * L:c * L + len(f)] += f[: len(out) - c * L]
+    tone = np.sin(2 * np.pi * np.cumsum(200 + 900 * (t / d) ** 2) / SR) * 0.3
+    return norm((out + tone) * (t / d) ** 1.5, 0.8)
+
+
+def sfx_laser():
+    d = 0.6
+    t = t_axis(d)
+    f = 2400 * np.exp(-t * 5) + 300
+    x = np.sign(np.sin(2 * np.pi * np.cumsum(f) / SR)) * 0.4 + np.sin(2 * np.pi * np.cumsum(f * 1.5) / SR)
+    return norm(lp_fft(x, 6000) * env(len(t), 0.005, 0.25), 0.55)
+
+
+def sfx_glitch():
+    d = 0.35
+    out = noise(d) * 0
+    for k in range(9):
+        s = int(rng.uniform(0, d - 0.04) * SR)
+        m = int(rng.uniform(0.01, 0.04) * SR)
+        fr = rng.uniform(200, 3000)
+        tt = np.arange(m) / SR
+        out[s:s + m] += np.sign(np.sin(2 * np.pi * fr * tt)) * rng.uniform(0.3, 1)
+    return norm(bp_fft(out, 300, 7000), 0.5)
+
+
+def sfx_reels():
+    """Slot-machine reels spinning then stopping."""
+    d = 1.8
+    out = np.zeros(int(d * SR))
+    c = sfx_click()
+    tt, gap = 0.0, 0.025
+    while tt < d - 0.3:
+        s = int(tt * SR)
+        out[s:s + len(c)] += c * 0.5
+        tt += gap
+        gap *= 1.035
+    for st in (d - 0.45, d - 0.3, d - 0.15):
+        s = int(st * SR)
+        th = sfx_stamp()[: int(0.15 * SR)] * 0.6
+        out[s:s + len(th)] += th[: len(out) - s]
+    return norm(out, 0.7)
+
+
+def sfx_vault():
+    """Heavy metal door: clunk, then a low creak."""
+    d = 2.0
+    t = t_axis(d)
+    clunk = np.sin(2 * np.pi * 70 * t) * np.exp(-t * 12) + bp_fft(noise(d), 400, 2500) * np.exp(-t * 30) * 0.6
+    creak_f = 110 + 25 * np.sin(2 * np.pi * 3 * t)
+    creak = np.sign(np.sin(2 * np.pi * np.cumsum(creak_f) / SR)) * 0.15
+    creak = lp_fft(creak, 1500) * np.clip((t - 0.3) / 0.2, 0, 1) * np.exp(-np.clip(t - 0.5, 0, None) * 1.5)
+    return norm(np.tanh(2 * (clunk + creak)), 0.9)
+
+
+def sfx_cheer():
+    """Small crowd cheer: band-limited noise swell with a few claps."""
+    d = 2.4
+    t = t_axis(d)
+    crowd = bp_fft(noise(d), 500, 3000) * np.sin(np.pi * np.clip(t / d, 0, 1)) ** 0.7
+    crowd *= 1 + 0.3 * np.sin(2 * np.pi * 4 * t)
+    claps = np.zeros(len(t))
+    for k in range(40):
+        s = int(rng.uniform(0, d - 0.05) * SR)
+        m = int(0.02 * SR)
+        claps[s:s + m] += hp_fft(noise(0.02), 1200)[:m] * np.exp(-np.arange(m) / SR * 200) * rng.uniform(0.3, 1)
+    return norm(crowd * 0.6 + claps, 0.6)
+
+
+def sfx_swoosh_up():
+    d = 0.9
+    t = t_axis(d)
+    x = bp_fft(noise(d), 800, 6000) * np.sin(np.pi * t / d) ** 2
+    tone = np.sin(2 * np.pi * np.cumsum(400 + 1200 * t / d) / SR) * 0.2 * np.sin(np.pi * t / d)
+    return norm(x + tone, 0.6)
+
+
+def sfx_impact():
+    """Cinematic hit: sub drop plus bright transient."""
+    d = 2.0
+    t = t_axis(d)
+    sub = np.sin(2 * np.pi * np.cumsum(55 * np.exp(-t * 1.5) + 30) / SR) * np.exp(-t * 1.8)
+    hit = hp_fft(noise(d), 2500) * np.exp(-t * 25) * 0.8
+    return norm(np.tanh((sub + hit) * 2.2), 0.95)
+
+
 EFFECTS = {name[4:]: fn for name, fn in globals().items() if name.startswith("sfx_")}
 
 
 # ---------------------------------------------------------------- music bed
+def music_bed_edm(dur):
+    """Festive EDM-ish bed: four-on-the-floor kick, off-beat hats, minor pad, bell arpeggio."""
+    bpm = 120
+    beat = 60 / bpm
+    n = int(dur * SR)
+    out = np.zeros(n)
+    t_all = np.arange(n) / SR
+    chords = [[220.0, 261.6, 329.6], [174.6, 220.0, 261.6], [196.0, 246.9, 293.7], [164.8, 207.7, 246.9]]
+    bar = beat * 4
+    pad = np.zeros(n)
+    for i in range(int(dur / bar) + 1):
+        s, e = int(i * bar * SR), min(n, int((i + 1) * bar * SR))
+        if s >= n:
+            break
+        tt = np.arange(e - s) / SR
+        seg = sum(np.sign(np.sin(2 * np.pi * f * tt)) * 0.3 + np.sin(2 * np.pi * f / 2 * tt) for f in chords[i % 4])
+        pad[s:e] += seg * np.minimum(1, np.minimum(tt / 0.08, (bar - tt) / 0.08))
+    out += lp_fft(pad, 900) * 0.05
+    k = 0
+    while k * beat / 2 < dur:
+        s = int(k * beat / 2 * SR)
+        if k % 2 == 0:  # kick on every beat
+            m = int(0.3 * SR)
+            tt = np.arange(m) / SR
+            x = np.sin(2 * np.pi * np.cumsum(50 + 120 * np.exp(-tt * 30)) / SR) * env(m, 0.001, 0.12)
+            out[s:s + m] += x[: n - s] * 0.5
+        else:  # off-beat hat
+            m = int(0.06 * SR)
+            out[s:s + m] += hp_fft(noise(0.06), 7000)[:m][: n - s] * env(m, 0.001, 0.02)[: n - s] * 0.18
+        if k % 8 == 4:  # clap
+            m = int(0.15 * SR)
+            out[s:s + m] += bp_fft(noise(0.15), 900, 4000)[:m][: n - s] * env(m, 0.001, 0.05)[: n - s] * 0.25
+        k += 1
+    arp = [880.0, 1046.5, 1318.5, 1046.5]
+    k = 0
+    while k * beat / 2 < dur:
+        s = int(k * beat / 2 * SR)
+        m = int(0.3 * SR)
+        tt = np.arange(m) / SR
+        f = arp[k % 4] * (0.75 if (k // 16) % 2 else 1)
+        x = (np.sin(2 * np.pi * f * tt) + 0.4 * np.sin(2 * np.pi * 2.76 * f * tt)) * env(m, 0.001, 0.08)
+        out[s:s + m] += x[: n - s] * 0.04
+        k += 1
+    fade = np.minimum(1, np.minimum(t_all / 1.0, (dur - t_all) / 2.0))
+    return out * np.clip(fade, 0, 1)
+
+
 def music_bed(dur):
     """Light upbeat bhangra-flavoured loop: dhol-ish percussion, shaker, pad, pluck."""
     bpm = 112
@@ -432,7 +576,7 @@ def main():
         e = min(n, s + len(x))
         sfx[s:e] += x[: e - s] * gain
 
-    music = music_bed(DURATION)
+    music = music_bed_edm(DURATION) if getattr(T, "MUSIC", "") == "edm" else music_bed(DURATION)
 
     # voice envelope -> ducking for music and per-frame lip-sync data
     win = int(0.05 * SR)

@@ -46,6 +46,16 @@ Final video: `output/diwali_bumper_punjaban.mp4` (1080x1920 vertical, 62.8s)
 - Female Punjabi-accented voice (ElevenLabs "Jasleen"), Hindi with Punjabi touches; agency ticker at the bottom
 - Character: `video/presenter_girl.py`; scenes: `video/punjaban_scenes.py`
 
+## 5. Diwali Bumper 2026 – "TOP 5 बातें" (male host, new graphics set)
+
+Final video: `output/diwali_bumper_top5.mp4` (1080x1920 vertical, 74.5s)
+
+- Same host style as videos 1–2 with a countdown script (`assets/top5/voiceover.mp3`)
+- New visuals: night skyline + rising sky lanterns + light streaks, laser ticket scanner, TOP-5 flip cards,
+  slot-machine ₹12 crore jackpot, sold-tickets-into-the-draw-drum, podium with trophies and gift-box rain,
+  rashi prize wheel, neon ₹500 sign, flip clock, live TV, neon shop front for the agency; light-flash ring transitions
+- New sounds: riser, laser, glitch, slot reels, vault, crowd cheer, swoosh-up, cinematic impact, EDM music bed
+
 ## Rebuild
 ```
 python3 video/build_audio.py   # soundtrack + lip-sync data -> build/
@@ -63,6 +73,10 @@ python3 video/render.py --project combo
 # Punjabi girl presenter video
 python3 video/build_audio.py --project punjaban
 python3 video/render.py --project punjaban
+
+# TOP 5 video
+python3 video/build_audio.py --project top5
+python3 video/render.py --project top5
 ```
 The Diwali video's timings live in `video/diwali_timeline.py`, its scenes in `video/diwali_scenes.py`.
 Timings, captions and the SFX cue sheet live in `video/timeline.py`.

@@ -266,7 +266,7 @@ def render_frame(frame, env):
     if hasattr(SC, "overlay"):
         SC.overlay(c, t)
     draw_captions(c, t)
-    draw_transition(c, t)
+    (SC.draw_transition if hasattr(SC, "draw_transition") else draw_transition)(c, t)
     # fade in/out
     fade = min(clamp(t / 0.3), clamp((DURATION - t) / 0.6))
     if fade < 1:
